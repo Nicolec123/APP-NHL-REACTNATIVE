@@ -1,0 +1,31 @@
+// Schema Prisma para IceHub - usuarios, favoritos e preferencias
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // Para desenvolvimento local vamos usar SQLite em arquivo.
+  // Em producao voce pode trocar para "postgresql" e apontar para um DATABASE_URL real.
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Times favoritos: IDs da NHL API (ex: 10 = Toronto Maple Leafs)
+  // Em SQLite nao podemos ter listas primitivas, entao vamos armazenar como JSON em string.
+  // Exemplo de valor: "[10, 20, 30]"
+  favoriteTeamIds String   @default("[]")
+  // Token para push notifications (Expo)
+  pushToken       String?
+  // Preferencias
+  notifyGames     Boolean @default(true)
+  notifyNews      Boolean @default(true)
+  darkMode        Boolean @default(false)
+}

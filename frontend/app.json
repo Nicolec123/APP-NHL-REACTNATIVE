@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "IceHub",
+    "slug": "icehub",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "icehub",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.icehub.app"
+    },
+    "web": {},
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}
