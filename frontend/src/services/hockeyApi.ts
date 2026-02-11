@@ -65,3 +65,11 @@ export async function fetchOlympicLeagueId(): Promise<number | null> {
   const data = await get<{ olympicLeagueId: number | null }>('/olympics/leagues');
   return data.olympicLeagueId ?? null;
 }
+
+export async function fetchOlympicGameStats(gameId: number): Promise<any | null> {
+  const data = await get<ApiResponse<any>>('/games/statistics', { game: String(gameId) });
+  const response = data.response ?? [];
+  if (Array.isArray(response) && response.length > 0) return response[0];
+  return null;
+}
+

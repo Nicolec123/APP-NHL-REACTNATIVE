@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, FlatList, StyleSheet, RefreshControl, Image } from 'react-native';
 import { IceBackground } from '@components/IceBackground';
 import { ScreenHeader } from '@components/ScreenHeader';
 import { Skeleton } from '@components/Skeleton';
@@ -108,10 +108,15 @@ export const FavoritesScreen: React.FC = () => {
             const abbr = isOlympics
               ? (item as OlympicTeam).name?.slice(0, 3).toUpperCase() || '—'
               : (item as NhlTeam).abbreviation;
+            const logo = isOlympics ? (item as OlympicTeam).logo : undefined;
             return (
               <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <View style={[styles.logoCircle, { backgroundColor: colors.primarySoft }]}>
-                  <Text style={[styles.logoText, { color: colors.primary }]}>{abbr}</Text>
+                  {logo ? (
+                    <Image source={{ uri: logo }} style={styles.logoImage} />
+                  ) : (
+                    <Text style={[styles.logoText, { color: colors.primary }]}>{abbr}</Text>
+                  )}
                 </View>
                 <Text style={[styles.teamName, { color: colors.text }]}>{item.name}</Text>
               </View>
@@ -140,6 +145,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
+  },
+  logoImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    resizeMode: 'contain',
   },
   logoText: {
     ...typography.subtitle,

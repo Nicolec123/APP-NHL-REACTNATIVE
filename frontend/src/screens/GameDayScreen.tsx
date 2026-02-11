@@ -3,54 +3,24 @@ import { View, Text, ScrollView, StyleSheet, RefreshControl } from 'react-native
 import { IceBackground } from '@components/IceBackground';
 import { ScreenHeader } from '@components/ScreenHeader';
 import { GameCard } from '@components/GameCard';
+import { OlympicGameDetails } from '@components/OlympicGameDetails';
 import { Skeleton } from '@components/Skeleton';
 import { useThemeColors } from '@hooks/useThemeColors';
 import { useAppStore } from '@store/useAppStore';
 import { fetchOlympicGames } from '@services/hockeyApi';
-import { spacing, typography } from '../theme';
+import { normalizeOlympicGames, OlympicGameNormalized } from '../domain/olympics/phaseMapper';
+import { spacing, typography, radius } from '../theme';
 
-type OlympicGameItem = {
-  id: number;
-  homeName: string;
-  awayName: string;
-  date: string;
-  time: string;
-  status: 'LIVE' | 'FINAL' | 'UPCOMING';
-};
-
-function normalizeOlympicGames(data: any[]): OlympicGameItem[] {
-  if (!Array.isArray(data)) return [];
-  return data.map((g: any) => {
-    const game = g.game ?? g;
-    const teams = g.teams ?? game.teams ?? {};
-    const home = teams.home ?? {};
-    const away = teams.away ?? {};
-    const status = (game.status?.short ?? g.status?.short ?? '').toUpperCase();
-    const isLive = status === 'LIVE' || status === '1H' || status === '2H' || status === '3H';
-    const isFinal = status === 'FT' || status === 'AOT' || status === 'AWD' || status === 'WO' || status === 'FIN';
-    let cardStatus: 'LIVE' | 'FINAL' | 'UPCOMING' = 'UPCOMING';
-    if (isLive) cardStatus = 'LIVE';
-    else if (isFinal) cardStatus = 'FINAL';
-    const d = game.date ?? g.date ?? '';
-    const t = game.time ?? g.time ?? '';
-    const dateStr = d ? new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : '';
-    const timeStr = t || (d ? new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '');
-    return {
-      id: game.id ?? g.id ?? 0,
-      homeName: home.name ?? game.home?.name ?? 'TBD',
-      awayName: away.name ?? game.away?.name ?? 'TBD',
-      date: dateStr,
-      time: timeStr,
-      status: cardStatus,
-    };
-  });
-}
+type OlympicGameItem = OlympicGameNormalized;
 
 export const GameDayScreen: React.FC = () => {
   const colors = useThemeColors();
   const mode = useAppStore(state => state.mode);
   const [olympicGames, setOlympicGames] = useState<OlympicGameItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>('all');
+  const [dateFilter, setDateFilter] = useState<'today' | 'upcoming' | 'finished'>('today');
+  const [selectedGame, setSelectedGame] = useState<OlympicGameItem | null>(null);
 
   const loadOlympic = useCallback(async () => {
     if (mode !== 'olympics') return;
@@ -70,6 +40,52 @@ export const GameDayScreen: React.FC = () => {
   }, [mode, loadOlympic]);
 
   const isOlympics = mode === 'olympics';
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const endOfToday = startOfToday + 24 * 60 * 60 * 1000 - 1;
+
+  const filteredGames = olympicGames
+    .filter(game => {
+      if (genderFilter === 'male' && game.gender === 'female') return false;
+      if (genderFilter === 'female' && game.gender === 'male') return false;
+      const ts = game.timestamp;
+      if (!ts) return true;
+      if (dateFilter === 'today') {
+        return ts >= startOfToday && ts <= endOfToday;
+      }
+      if (dateFilter === 'upcoming') {
+        return ts > endOfToday && game.status !== 'finished';
+      }
+      if (dateFilter === 'finished') {
+        return ts < startOfToday && game.status === 'finished';
+      }
+      return true;
+    })
+    .sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+
+  const phaseOrder: Record<string, number> = {
+    'fase preliminar': 1,
+    'fase do torneio': 2,
+    eliminatórias: 3,
+    'quartas de final': 4,
+    semifinal: 5,
+    'disputa de bronze': 6,
+    final: 7,
+  };
+
+  const groupedByPhase: Record<string, OlympicGameItem[]> = {};
+  filteredGames.forEach(game => {
+    const label = game.phase ?? 'Fase do torneio';
+    if (!groupedByPhase[label]) groupedByPhase[label] = [];
+    groupedByPhase[label].push(game);
+  });
+
+  const orderedPhases = Object.keys(groupedByPhase).sort((a, b) => {
+    const ka = phaseOrder[a.toLowerCase()] ?? 99;
+    const kb = phaseOrder[b.toLowerCase()] ?? 99;
+    return ka - kb;
+  });
 
   return (
     <IceBackground>
@@ -110,18 +126,140 @@ export const GameDayScreen: React.FC = () => {
             </Text>
           </View>
         ) : (
-          olympicGames.map((game) => (
-            <GameCard
-              key={game.id}
-              homeTeam={game.homeName.length > 3 ? game.homeName.slice(0, 3).toUpperCase() : game.homeName}
-              awayTeam={game.awayName.length > 3 ? game.awayName.slice(0, 3).toUpperCase() : game.awayName}
-              startTime={`${game.date} ${game.time}`.trim()}
-              status={game.status}
-              league="Olimpíadas"
-            />
-          ))
+          <>
+            <View style={styles.filtersRow}>
+              <View style={styles.filterGroup}>
+                <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>Data</Text>
+                <View style={styles.filterChips}>
+                  <Text
+                    onPress={() => setDateFilter('today')}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: dateFilter === 'today' ? colors.primarySoft : 'transparent',
+                        color: dateFilter === 'today' ? colors.primary : colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    Hoje
+                  </Text>
+                  <Text
+                    onPress={() => setDateFilter('upcoming')}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: dateFilter === 'upcoming' ? colors.primarySoft : 'transparent',
+                        color: dateFilter === 'upcoming' ? colors.primary : colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    Próximos
+                  </Text>
+                  <Text
+                    onPress={() => setDateFilter('finished')}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: dateFilter === 'finished' ? colors.primarySoft : 'transparent',
+                        color: dateFilter === 'finished' ? colors.primary : colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    Concluídos
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.filterGroup}>
+                <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>Categoria</Text>
+                <View style={styles.filterChips}>
+                  <Text
+                    onPress={() => setGenderFilter('all')}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: genderFilter === 'all' ? colors.primarySoft : 'transparent',
+                        color: genderFilter === 'all' ? colors.primary : colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    Todos
+                  </Text>
+                  <Text
+                    onPress={() => setGenderFilter('male')}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: genderFilter === 'male' ? colors.primarySoft : 'transparent',
+                        color: genderFilter === 'male' ? colors.primary : colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    Masculino
+                  </Text>
+                  <Text
+                    onPress={() => setGenderFilter('female')}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: genderFilter === 'female' ? colors.primarySoft : 'transparent',
+                        color: genderFilter === 'female' ? colors.primary : colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    Feminino
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {filteredGames.length === 0 ? (
+              <View style={styles.empty}>
+                <Text style={[styles.emptyText, { color: colors.text }]}>Nenhum jogo para os filtros atuais</Text>
+                <Text style={[styles.emptySub, { color: colors.textSecondary }]}>
+                  Altere a data ou a categoria para ver outros jogos.
+                </Text>
+              </View>
+            ) : (
+              orderedPhases.map(phase => (
+                <View key={phase} style={styles.phaseSection}>
+                  <Text style={[styles.phaseTitle, { color: colors.text }]}>{phase}</Text>
+                  {groupedByPhase[phase].map(game => {
+                    const cardStatus = game.status === 'live' ? 'LIVE' : game.status === 'finished' ? 'FINAL' : 'UPCOMING';
+                    const homeAbbr = game.home.name.length > 3 ? game.home.name.slice(0, 3).toUpperCase() : game.home.name;
+                    const awayAbbr = game.away.name.length > 3 ? game.away.name.slice(0, 3).toUpperCase() : game.away.name;
+                    return (
+                      <GameCard
+                        key={game.id}
+                        homeTeam={homeAbbr}
+                        awayTeam={awayAbbr}
+                        homeLogo={game.home.logo}
+                        awayLogo={game.away.logo}
+                        homeScore={game.scores.home ?? undefined}
+                        awayScore={game.scores.away ?? undefined}
+                        startTime={`${game.dateLabel} ${game.timeLabel}`.trim()}
+                        status={cardStatus}
+                        league="Olimpíadas"
+                        onPress={() => setSelectedGame(game)}
+                      />
+                    );
+                  })}
+                </View>
+              ))
+            )}
+          </>
         )}
       </ScrollView>
+      {isOlympics && selectedGame && (
+        <OlympicGameDetails
+          visible={!!selectedGame}
+          gameId={selectedGame.id}
+          onClose={() => setSelectedGame(null)}
+          homeName={selectedGame.home.name}
+          awayName={selectedGame.away.name}
+          homeLogo={selectedGame.home.logo}
+          awayLogo={selectedGame.away.logo}
+        />
+      )}
     </IceBackground>
   );
 };
@@ -129,6 +267,36 @@ export const GameDayScreen: React.FC = () => {
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  filtersRow: {
+    marginBottom: spacing.md,
+    gap: spacing.md,
+  },
+  filterGroup: {
+    marginBottom: spacing.sm,
+  },
+  filterLabel: {
+    ...typography.caption,
+    marginBottom: 4,
+  },
+  filterChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  chip: {
+    ...typography.caption,
+    paddingVertical: 4,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.sm,
+  },
+  phaseSection: {
+    marginBottom: spacing.lg,
+  },
+  phaseTitle: {
+    ...typography.caption,
+    marginBottom: spacing.xs,
+    textTransform: 'uppercase',
+  },
   empty: {
     paddingVertical: spacing.xl,
     alignItems: 'center',

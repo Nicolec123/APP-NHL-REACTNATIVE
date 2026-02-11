@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import axios from 'axios';
 import { config } from '../config';
+import { translateToPt } from '../utils/translate';
 
 /**
  * Notícias NHL:
@@ -18,6 +19,19 @@ type Article = {
   urlToImage?: string;
   source?: string;
 };
+
+async function translateArticlesToPt(source: string, articles: Article[]): Promise<Article[]> {
+  // Mock já está em português
+  if (source === 'mock') return articles;
+
+  return Promise.all(
+    articles.map(async (article) => ({
+      ...article,
+      title: article.title ? await translateToPt(article.title) : article.title,
+      description: article.description ? await translateToPt(article.description) : article.description,
+    }))
+  );
+}
 
 function mockArticles(): Article[] {
   return [
@@ -91,12 +105,16 @@ newsRoutes.get('/', async (req, res) => {
       source = 'mock';
     }
 
-    return res.json({ source, articles });
+    const translated = await translateArticlesToPt(source, articles);
+    return res.json({ source, articles: translated });
   } catch (error: any) {
     console.error('[IceHub API] Erro ao buscar notícias', error?.message);
     try {
       const articles = await fetchGNews((req.query.q as string) || 'NHL hockey');
-      if (articles.length > 0) return res.json({ source: 'gnews', articles });
+      if (articles.length > 0) {
+        const translated = await translateArticlesToPt('gnews', articles);
+        return res.json({ source: 'gnews', articles: translated });
+      }
     } catch {
       // ignora
     }

@@ -17,6 +17,25 @@ function getHeaders() {
   return { 'x-apisports-key': key };
 }
 
+// Cache simples em memória (por liga/temporada) para reduzir chamadas à API externa
+type CacheEntry = { data: any; timestamp: number };
+const GAMES_CACHE = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 60_000; // 1 minuto – pode ajustar depois se quiser
+
+function getCache(key: string): any | null {
+  const entry = GAMES_CACHE.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+    GAMES_CACHE.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
+function setCache(key: string, data: any) {
+  GAMES_CACHE.set(key, { data, timestamp: Date.now() });
+}
+
 // Listar ligas (para achar Olympics e pegar ID)
 hockeyApiRoutes.get('/leagues', async (_req, res) => {
   try {
@@ -39,11 +58,16 @@ hockeyApiRoutes.get('/games', async (req: Request<{}, {}, {}, { league?: string;
   try {
     const league = req.query.league ?? '';
     const season = req.query.season ?? '2022';
+    const cacheKey = `games:${league}:${season}`;
+    const cached = getCache(cacheKey);
+    if (cached) return res.json(cached);
+
     const { data } = await axios.get(`${HOCKEY_API_BASE}/games`, {
       params: { league, season },
       headers: getHeaders(),
       timeout: 12000
     });
+    setCache(cacheKey, data);
     return res.json(data);
   } catch (error: any) {
     if (error.message?.includes('não configurada')) {
@@ -166,11 +190,16 @@ hockeyApiRoutes.get('/olympics/games', async (req: Request<{}, {}, {}, { season?
       return res.json({ response: [], message: 'Liga olímpica não encontrada na API.' });
     }
     const season = req.query.season ?? '2022';
+    const cacheKey = `olympics:games:${leagueId}:${season}`;
+    const cached = getCache(cacheKey);
+    if (cached) return res.json(cached);
+
     const { data } = await axios.get(`${HOCKEY_API_BASE}/games`, {
       params: { league: leagueId, season },
       headers: getHeaders(),
       timeout: 12000
     });
+    setCache(cacheKey, data);
     return res.json(data);
   } catch (error: any) {
     if (error.message?.includes('não configurada')) {

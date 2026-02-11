@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, Image } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { IceBackground } from '@components/IceBackground';
 import { ScreenHeader } from '@components/ScreenHeader';
@@ -108,6 +108,7 @@ export const TeamsScreen: React.FC = () => {
             const abbr = isOlympics
               ? (item as OlympicTeam).name?.slice(0, 3).toUpperCase() || '—'
               : (item as NhlTeam).abbreviation;
+            const logo = isOlympics ? (item as OlympicTeam).logo : undefined;
             const subtitle = isOlympics
               ? (item as OlympicTeam).country?.name ?? 'Olimpíadas'
               : (item as NhlTeam).division?.name?.replace(' Division', '') ?? 'Divisão desconhecida';
@@ -118,7 +119,11 @@ export const TeamsScreen: React.FC = () => {
                 onPress={() => toggleFavorite(item.id)}
               >
                 <View style={[styles.logoCircle, { backgroundColor: colors.primarySoft }]}>
-                  <Text style={[styles.logoText, { color: colors.primary }]}>{abbr}</Text>
+                  {logo ? (
+                    <Image source={{ uri: logo }} style={styles.logoImage} />
+                  ) : (
+                    <Text style={[styles.logoText, { color: colors.primary }]}>{abbr}</Text>
+                  )}
                 </View>
                 <View style={styles.info}>
                   <Text style={[styles.teamName, { color: colors.text }]}>{item.name}</Text>
@@ -154,6 +159,12 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  logoImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    resizeMode: 'contain',
   },
   logoText: {
     ...typography.subtitle,

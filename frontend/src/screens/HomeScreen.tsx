@@ -11,55 +11,16 @@ import { fetchOlympicGames } from '@services/hockeyApi';
 import { useAppStore } from '@store/useAppStore';
 import { useThemeColors } from '@hooks/useThemeColors';
 import { spacing, typography } from '../theme';
-
-type OlympicGameItem = {
-  id: number;
-  homeName: string;
-  awayName: string;
-  date: string;
-  time: string;
-  status: 'LIVE' | 'FINAL' | 'UPCOMING';
-  homeScore?: number;
-  awayScore?: number;
-};
-
-function normalizeOlympicGames(data: any[]): OlympicGameItem[] {
-  if (!Array.isArray(data)) return [];
-  return data.map((g: any) => {
-    const game = g.game ?? g;
-    const teams = g.teams ?? game.teams ?? {};
-    const home = teams.home ?? {};
-    const away = teams.away ?? {};
-    const scores = g.scores ?? game.scores ?? {};
-    const status = (game.status?.short ?? g.status?.short ?? '').toUpperCase();
-    const isLive = status === 'LIVE' || status === '1H' || status === '2H' || status === '3H';
-    const isFinal = status === 'FT' || status === 'AOT' || status === 'AWD' || status === 'WO' || status === 'FIN';
-    let cardStatus: 'LIVE' | 'FINAL' | 'UPCOMING' = 'UPCOMING';
-    if (isLive) cardStatus = 'LIVE';
-    else if (isFinal) cardStatus = 'FINAL';
-    const d = game.date ?? g.date ?? '';
-    const t = game.time ?? g.time ?? '';
-    const dateStr = d ? new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : '';
-    const timeStr = t || (d ? new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '');
-    return {
-      id: game.id ?? g.id ?? 0,
-      homeName: home.name ?? game.home?.name ?? 'TBD',
-      awayName: away.name ?? game.away?.name ?? 'TBD',
-      date: dateStr,
-      time: timeStr,
-      status: cardStatus,
-      homeScore: scores.home ?? game.scores?.home,
-      awayScore: scores.away ?? game.scores?.away
-    };
-  });
-}
+import { OlympicGameDetails } from '@components/OlympicGameDetails';
+import { normalizeOlympicGames, OlympicGameNormalized } from '../domain/olympics/phaseMapper';
 
 export const HomeScreen: React.FC = () => {
   const colors = useThemeColors();
   const mode = useAppStore(state => state.mode);
   const { games, isLoading, refetch } = useTodayGames();
-  const [olympicGames, setOlympicGames] = useState<OlympicGameItem[]>([]);
+  const [olympicGames, setOlympicGames] = useState<OlympicGameNormalized[]>([]);
   const [olympicLoading, setOlympicLoading] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<OlympicGameNormalized | null>(null);
 
   const loadOlympic = useCallback(async () => {
     if (mode !== 'olympics') return;
@@ -81,6 +42,46 @@ export const HomeScreen: React.FC = () => {
   const isOlympics = mode === 'olympics';
   const loading = isOlympics ? olympicLoading : isLoading;
   const onRefresh = isOlympics ? loadOlympic : refetch;
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+  const olympicVisible = isOlympics
+    ? olympicGames
+        .filter(game => {
+          if (!game.timestamp) return true;
+          // Home mostra jogos de hoje em diante
+          return game.timestamp >= startOfToday;
+        })
+        .sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0))
+    : [];
+
+  const phaseOrder: Record<string, number> = {
+    'fase preliminar': 1,
+    'fase do torneio': 2,
+    eliminatórias: 3,
+    'quartas de final': 4,
+    semifinal: 5,
+    'disputa de bronze': 6,
+    final: 7,
+  };
+
+  const groupedByPhase: Record<string, OlympicGameNormalized[]> = {};
+  if (isOlympics) {
+    olympicVisible.forEach(game => {
+      const label = game.phase ?? 'Fase do torneio';
+      if (!groupedByPhase[label]) groupedByPhase[label] = [];
+      groupedByPhase[label].push(game);
+    });
+  }
+
+  const orderedPhases = isOlympics
+    ? Object.keys(groupedByPhase).sort((a, b) => {
+        const ka = phaseOrder[a.toLowerCase()] ?? 99;
+        const kb = phaseOrder[b.toLowerCase()] ?? 99;
+        return ka - kb;
+      })
+    : [];
 
   return (
     <IceBackground>
@@ -117,7 +118,7 @@ export const HomeScreen: React.FC = () => {
             ))}
           </View>
         ) : isOlympics ? (
-          olympicGames.length === 0 ? (
+          olympicVisible.length === 0 ? (
             <View style={styles.empty}>
               <Text style={[styles.emptyText, { color: colors.text }]}>Nenhum jogo olímpico disponível.</Text>
               <Text style={[styles.emptySub, { color: colors.textSecondary }]}>
@@ -125,15 +126,30 @@ export const HomeScreen: React.FC = () => {
               </Text>
             </View>
           ) : (
-            olympicGames.map((game) => (
-              <GameCard
-                key={game.id}
-                homeTeam={game.homeName.length > 3 ? game.homeName.slice(0, 3).toUpperCase() : game.homeName}
-                awayTeam={game.awayName.length > 3 ? game.awayName.slice(0, 3).toUpperCase() : game.awayName}
-                startTime={`${game.date} ${game.time}`.trim()}
-                status={game.status}
-                league="Olimpíadas"
-              />
+            orderedPhases.map(phase => (
+              <View key={phase} style={styles.phaseSection}>
+                <Text style={[styles.phaseTitle, { color: colors.text }]}>{phase}</Text>
+                {groupedByPhase[phase].map(game => {
+                  const cardStatus = game.status === 'live' ? 'LIVE' : game.status === 'finished' ? 'FINAL' : 'UPCOMING';
+                  const homeAbbr = game.home.name.length > 3 ? game.home.name.slice(0, 3).toUpperCase() : game.home.name;
+                  const awayAbbr = game.away.name.length > 3 ? game.away.name.slice(0, 3).toUpperCase() : game.away.name;
+                  return (
+                    <GameCard
+                      key={game.id}
+                      homeTeam={homeAbbr}
+                      awayTeam={awayAbbr}
+                      homeLogo={game.home.logo}
+                      awayLogo={game.away.logo}
+                      homeScore={game.scores.home ?? undefined}
+                      awayScore={game.scores.away ?? undefined}
+                      startTime={`${game.dateLabel} ${game.timeLabel}`.trim()}
+                      status={cardStatus}
+                      league="Olimpíadas"
+                      onPress={() => setSelectedGame(game)}
+                    />
+                  );
+                })}
+              </View>
             ))
           )
         ) : games.length === 0 ? (
@@ -147,6 +163,8 @@ export const HomeScreen: React.FC = () => {
               key={game.gamePk}
               homeTeam={game.teams.home.team.abbreviation}
               awayTeam={game.teams.away.team.abbreviation}
+              homeScore={game.teams.home.score}
+              awayScore={game.teams.away.score}
               startTime={game.gameDateLocal}
               status={
                 game.status.statusCode === '3'
@@ -159,6 +177,17 @@ export const HomeScreen: React.FC = () => {
           ))
         )}
       </ScrollView>
+      {isOlympics && selectedGame && (
+        <OlympicGameDetails
+          visible={!!selectedGame}
+          gameId={selectedGame.id}
+          onClose={() => setSelectedGame(null)}
+          homeName={selectedGame.home.name}
+          awayName={selectedGame.away.name}
+          homeLogo={selectedGame.home.logo}
+          awayLogo={selectedGame.away.logo}
+        />
+      )}
     </IceBackground>
   );
 };
@@ -176,6 +205,15 @@ const styles = StyleSheet.create({
   sectionSubtitle: {
     ...typography.caption,
     marginTop: 2,
+  },
+  phaseSection: {
+    marginBottom: spacing.lg,
+  },
+  phaseTitle: {
+    ...typography.caption,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.xs,
+    textTransform: 'uppercase',
   },
   empty: {
     paddingHorizontal: spacing.lg,
