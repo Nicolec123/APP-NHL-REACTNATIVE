@@ -10,27 +10,28 @@ const THESPORTSDB_BASE = 'https://www.thesportsdb.com/api/v1/json';
 
 export const wallpapersRoutes = Router();
 
+/** Imagens genéricas de hockey no gelo (Unsplash – rinque, jogo, arena). */
 const GENERIC_WALLPAPERS = [
   {
     id: 'generic-ice-1',
     teamId: null as string | null,
     title: 'Rink Gelado',
     imageUrl:
-      'https://images.pexels.com/photos/399187/pexels-photo-399187.jpeg?auto=compress&cs=tinysrgb&w=1200'
+      'https://images.unsplash.com/photo-1644553054315-9fb69509f932?w=1200&q=80'
   },
   {
     id: 'generic-puck-1',
     teamId: null,
     title: 'Hockey no Gelo',
     imageUrl:
-      'https://images.pexels.com/photos/274192/pexels-photo-274192.jpeg?auto=compress&cs=tinysrgb&w=1200'
+      'https://images.unsplash.com/photo-1610359156022-70098c24beda?w=1200&q=80'
   },
   {
     id: 'generic-arena-1',
     teamId: null,
-    title: 'Arena NHL',
+    title: 'Arena de Hockey',
     imageUrl:
-      'https://images.pexels.com/photos/863988/pexels-photo-863988.jpeg?auto=compress&cs=tinysrgb&w=1200'
+      'https://images.unsplash.com/photo-1674571579456-62fdb093589f?w=1200&q=80'
   }
 ];
 

@@ -46,15 +46,18 @@ export const NewsScreen: React.FC = () => {
     load();
   };
 
+  const incrementNewsRead = useAppStore(state => state.incrementNewsRead);
   const openArticle = (url: string) => {
-    if (url) Linking.openURL(url).catch(() => {});
+    if (!url) return;
+    incrementNewsRead();
+    Linking.openURL(url).catch(() => {});
   };
 
   return (
     <IceBackground>
       <ScreenHeader
         title="Notícias"
-        subtitle={mode === 'olympics' ? 'Hockey nas Olimpíadas' : 'Últimas da NHL'}
+        subtitle={undefined}
         icon="newspaper-outline"
       />
       <ScrollView

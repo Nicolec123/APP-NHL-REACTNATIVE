@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar, View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
-import { colors, colorsOlympics, type ThemeColors } from './src/theme';
+import { useThemeColors } from './src/hooks/useThemeColors';
 import { useAppStore } from './src/store/useAppStore';
+import type { ThemeColors } from './src/theme';
 import type { RootTabParamList } from './src/types/navigation';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { TeamsScreen } from './src/screens/TeamsScreen';
@@ -15,6 +16,7 @@ import { NewsScreen } from './src/screens/NewsScreen';
 import { WallpapersScreen } from './src/screens/WallpapersScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { GameDayScreen } from './src/screens/GameDayScreen';
+import { OlympicsConcluidosScreen } from './src/screens/OlympicsConcluidosScreen';
 import { useHydrateApp } from './src/hooks/useHydrateApp';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -27,6 +29,7 @@ const TAB_ICONS: Record<keyof RootTabParamList, keyof typeof Ionicons.glyphMap> 
   Wallpapers: 'image',
   Profile: 'person',
   GameDay: 'calendar',
+  Concluidos: 'medal',
 };
 
 function getNavTheme(themeColors: ThemeColors) {
@@ -43,15 +46,26 @@ function getNavTheme(themeColors: ThemeColors) {
   };
 }
 
+const OLYMPICS_START = new Date('2026-02-06').getTime();
+const OLYMPICS_END = new Date('2026-02-23').getTime();
+
 export default function App() {
   const { isHydrated } = useHydrateApp();
-  const mode = useAppStore(state => state.mode);
-  const themeColors: ThemeColors = mode === 'olympics' ? colorsOlympics : colors;
+  const themeColors = useThemeColors();
+  const darkMode = useAppStore(state => state.darkMode);
+  const themeAuto = useAppStore(state => state.themeAuto);
+  const setMode = useAppStore(state => state.setMode);
+
+  useEffect(() => {
+    if (!themeAuto) return;
+    const now = Date.now();
+    setMode(now >= OLYMPICS_START && now < OLYMPICS_END ? 'olympics' : 'nhl');
+  }, [themeAuto, setMode]);
 
   if (!isHydrated) {
     return (
       <SafeAreaProvider>
-        <StatusBar barStyle="light-content" backgroundColor={themeColors.background} />
+        <StatusBar barStyle={darkMode ? 'light-content' : 'dark-content'} backgroundColor={themeColors.background} />
         <View
           style={{
             flex: 1,
@@ -68,7 +82,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="light-content" backgroundColor={themeColors.background} />
+      <StatusBar barStyle={darkMode ? 'light-content' : 'dark-content'} backgroundColor={themeColors.background} />
       <NavigationContainer theme={getNavTheme(themeColors)}>
         <Tab.Navigator
           initialRouteName="Home"
@@ -110,6 +124,11 @@ export default function App() {
             }}
           />
           <Tab.Screen name="GameDay" component={GameDayScreen} options={{ title: 'Game Day' }} />
+          <Tab.Screen
+            name="Concluidos"
+            component={OlympicsConcluidosScreen}
+            options={{ title: 'Concluídos' }}
+          />
           <Tab.Screen
             name="Profile"
             component={ProfileScreen}

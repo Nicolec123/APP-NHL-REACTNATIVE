@@ -9,6 +9,8 @@ export const config = {
   gnewsApiKey: process.env.GNEWS_API_KEY ?? '',
   theSportsDbApiKey: process.env.THESPORTSDB_API_KEY ?? '123',
   apiSportsHockeyKey: process.env.APISPORTS_HOCKEY_KEY ?? '',
+  /** URL do JSON remoto dos jogos olímpicos 2026 (GitHub raw, Vercel, etc.). Se vazio, tenta arquivo local data/olympics2026.json */
+  remoteOlympicsJsonUrl: process.env.REMOTE_OLYMPICS_JSON_URL ?? '',
   databaseUrl: process.env.DATABASE_URL ?? 'file:./dev.db'
 };
 

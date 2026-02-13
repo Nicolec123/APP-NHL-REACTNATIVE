@@ -33,11 +33,11 @@ O projeto é dividido em dois diretórios principais:
   - `GameDayScreen`: foco em jogos do time ou seleções (modo olímpico).
   - `NewsScreen`: notícias relacionadas à NHL ou Olimpíadas.
   - `WallpapersScreen`: grade de wallpapers.
-  - `ProfileScreen`: área de perfil (stub).
+  - `ProfileScreen`: perfil completo (card do usuário, favoritos centralizados, notificações, aparência, estatísticas, badge de fã, conta e segurança).
 
 - **Serviços de dados**:
   - `nhlApi.ts` e `nhlHooks.ts`: integração com `/api/nhl` (servidor).
-  - `hockeyApi.ts`: integração com `/api/hockey` (servidor / APISports Hockey).
+  - `hockeyApi.ts`: integração com `/api/hockey` (servidor; Olimpíadas via APISports ou TheSportsDB quando a chave não está configurada).
   - `newsApi.ts`: integração com `/api/news`.
   - `wallpapersApi.ts`: integração com `/api/wallpapers`.
 
@@ -225,7 +225,7 @@ Hook `useTodayGames()`:
 - Retorno:
   - `{ games, isLoading, error, refetch: load }`.
 
-### `hockeyApi` (APISports Hockey – Olimpíadas e ligas internacionais)
+### `hockeyApi` (Olimpíadas e ligas internacionais – APISports ou TheSportsDB)
 
 Local: `frontend/src/services/hockeyApi.ts`
 
@@ -234,14 +234,15 @@ Local: `frontend/src/services/hockeyApi.ts`
   - Monta URL com `HOCKEY_BASE + path` e `params`.
   - Chama backend `server/src/routes/hockey-api.routes.ts`.
   - Em caso de erro, tenta extrair `message` do JSON; se não houver, lança `'Erro na API Hockey'`.
+- O backend usa **TheSportsDB** (API gratuita, liga Olympics Ice Hockey 5137) para jogos e times olímpicos quando `APISPORTS_HOCKEY_KEY` não está definida; caso contrário, usa APISports Hockey.
 
 Funções principais:
 
-- **`fetchOlympicGames(season = '2022')`**:
-  - Chama `GET /api/hockey/olympics/games?season=2022`.
-  - Retorna `data.response ?? []` (onde `data` é resposta da APISports via backend).
-- **`fetchOlympicTeams(season = '2022')`**:
-  - Chama `GET /api/hockey/olympics/teams?season=2022`.
+- **`fetchOlympicGames(season = '2026')`**:
+  - Chama `GET /api/hockey/olympics/games?season=2026` (Olimpíadas de Inverno 2026 – Milano Cortina).
+  - Retorna `data.response ?? []` (dados podem vir do backend via APISports ou TheSportsDB).
+- **`fetchOlympicTeams(season = '2026')`**:
+  - Chama `GET /api/hockey/olympics/teams?season=2026`.
   - Normaliza para `OlympicTeam` com campos `id`, `name`, `logo`, `country`.
 - **`fetchOlympicLeagueId()`**:
   - Chama `GET /api/hockey/olympics/leagues`.
@@ -310,14 +311,14 @@ Lista de jogos:
     - Mensagem “Nenhum jogo hoje na NHL. Puxe para atualizar ou volte mais tarde.”
 
 - Quando **modo Olimpíadas**:
-  - Usa estado local `olympicGames`, carregado por `fetchOlympicGames('2022')`.
-  - Função `normalizeOlympicGames`:
-    - Mapeia campos do retorno da APISports para:
+  - Usa estado local `olympicGames`, carregado por `fetchOlympicGames('2026')` (Olimpíadas de Inverno 2026).
+  - Função `normalizeOlympicGames` (em `phaseMapper.ts`):
+    - Mapeia campos do retorno (APISports ou TheSportsDB, via backend) para:
       - `homeName`, `awayName`, `date`, `time`, `status`, e placares.
     - Determina `status` (`LIVE`, `FINAL`, `UPCOMING`) com base em códigos como `LIVE`, `FT`, `AOT`, etc.
   - Renderiza `GameCard` para cada jogo.
   - Caso não haja jogos:
-    - Mensagem orientando a configurar `APISPORTS_HOCKEY_KEY` no servidor.
+    - Mensagem: “Puxe para atualizar. Os dados vêm da API das Olimpíadas.”
 
 Fluxo do usuário:
 
@@ -343,7 +344,7 @@ Fluxo de dados:
   - Resposta tipada como `TeamsResponse { teams: NhlTeam[] }`.
   - Ordena times alfabeticamente: `list.sort((a, b) => a.name.localeCompare(b.name))`.
 - Quando **modo Olimpíadas**:
-  - `loadOlympic()` chama `fetchOlympicTeams('2022')`.
+  - `loadOlympic()` chama `fetchOlympicTeams('2026')`.
 
 Renderização:
 
@@ -381,7 +382,7 @@ Fluxo de dados:
 - `loadFavorites()`:
   - Se modo Olimpíadas:
     - Se não há `favoriteOlympicTeams`, limpa lista e encerra.
-    - Caso contrário, chama `fetchOlympicTeams('2022')` e filtra por IDs presentes.
+    - Caso contrário, chama `fetchOlympicTeams('2026')` e filtra por IDs presentes.
   - Se modo NHL:
     - Mesma ideia, usando `nhlApi.get('/teams')` e filtrando por `favoriteTeams`.
 
@@ -402,29 +403,39 @@ Fluxo do usuário:
 3. Vê apenas os times ou seleções que marcou.
 4. Pode puxar para atualizar caso haja alterações externas.
 
-### 4. Tela Game Day (`GameDayScreen`)
+### 4. Tela Game Day (`GameDayScreen`) – Central da competição
 
 Local: `frontend/src/screens/GameDayScreen.tsx`
 
-Objetivo: consolidar jogos do “Game Day”.
+Objetivo: funcionar como **“Central da competição”** (Bracket View), no estilo transmissão olímpica / playoff NHL: jogos agrupados por **fase**, com seções colapsáveis e destaque para a Final.
+
+**Domain – `phaseMapper.ts`** (`frontend/src/domain/olympics/phaseMapper.ts`):
+
+- **`PhaseKey`**: tipo `'group' | 'quarterfinal' | 'semifinal' | 'bronze' | 'final' | 'other'` para agrupamento.
+- **`mapPhase(rawPhase)`**: mapeia o texto bruto da fase (round/stage) para uma `PhaseKey` (quarter → quarterfinal, semi → semifinal, bronze, final, group/preliminary/qualification → group, resto → other).
+- **`OlympicGameNormalized`**: além do campo `phase` (label para exibição), possui **`phaseKey`**, preenchido em `normalizeOlympicGame`, usado para agrupar jogos por fase.
+- **`mapRoundToPhaseLabel(round)`**: continua gerando os rótulos em português (ex.: “Fase preliminar”, “Quartas de final”, “Semifinal”, “Disputa de bronze”, “Final”).
 
 Comportamento atual:
 
-- Modo NHL:
-  - Não há integração completa ainda (mensagem orientando a selecionar um time favorito).
-- Modo Olimpíadas:
-  - Usa `fetchOlympicGames('2022')` similar à Home.
-  - Normaliza dados com `normalizeOlympicGames`.
-  - Exibe lista de `GameCard` com:
-    - `homeTeam`, `awayTeam` (primeiras 3 letras, maiúsculas, se necessário).
-    - `startTime` (`date + time`).
-    - `status`.
+- **Modo NHL**:
+  - Ainda sem integração completa (mensagem orientando a selecionar um time favorito).
+- **Modo Olimpíadas**:
+  - Usa `fetchOlympicGames('2026')` e `normalizeOlympicGames` (cada jogo fica com `phaseKey` e `phase`).
+  - **Filtros**: data (**Todos** por padrão, Hoje, Próximos, Concluídos) e categoria (Todos, Masculino, Feminino). Em “Todos” não se esconde jogo por data; lista ordenada pela data mais próxima.
+  - **Agrupamento por fase**: `groupByPhase(filteredGames)` agrupa por `game.phaseKey`. Ordem das fases: **Fase de Grupos → Quartas de Final → Semifinais → Disputa de Bronze → Final → Outras fases**.
+  - **Seções colapsáveis**: cada fase é uma seção com header clicável (ícone + título + chevron). Toque no header expande/colapsa a lista de jogos daquela fase. Estado `expandedPhases` controla qual seção está aberta (inicialmente todas abertas).
+  - **Ícones por fase** (Ionicons): Fase de Grupos (`people`), Quartas (`flame`), Semifinais (`flash`), Bronze (`medal`), Final (`trophy`), Outras (`list`).
+  - **Destaque da Final**: a seção “Final” usa borda e fundo em `colors.accent` (dourado/amarelo no tema Olimpíadas), título em negrito e ícone em destaque.
+  - Cada jogo é um `GameCard` com `homeTeam`, `awayTeam` (abreviação), `startTime`, `status` (LIVE/FINAL/UPCOMING). Toque abre `OlympicGameDetails`.
+  - **Empty state**: se não houver jogos, mensagem “Jogos indisponíveis no momento” e “Puxe para atualizar ou tente novamente em instantes.”. Se não houver jogos para os filtros atuais, “Toque em «Todos» na data para ver todos os jogos.”.
 
 Fluxo do usuário:
 
 1. No modo Olimpíadas, abre a aba **Game Day**.
-2. Visualiza lista de jogos olímpicos.
-3. Pode puxar para atualizar dados (apenas em modo olímpico).
+2. Vê jogos agrupados por fase (Fase de Grupos, Quartas, Semifinais, Bronze, Final), com “Todos” em data por padrão.
+3. Pode tocar no header de cada fase para expandir/colapsar; a Final aparece destacada.
+4. Pode puxar para atualizar e alternar filtros de data e categoria.
 
 ### 5. Tela Notícias (`NewsScreen`)
 
@@ -554,66 +565,45 @@ Rotas:
 - `GET /people/:playerId`:
   - Dados de um jogador específico.
 
-### `/api/hockey` – APISports Hockey (inclui Olimpíadas)
+### `/api/hockey` – Olimpíadas e ligas (APISports, TheSportsDB e mock)
 
 Local: `server/src/routes/hockey-api.routes.ts`
 
-Função `getHeaders()`:
+- **Quando `APISPORTS_HOCKEY_KEY` está definida**: as rotas que dependem dela usam a API-Sports Hockey (proxy em `HOCKEY_API_BASE`). A função `getHeaders()` lê a chave e lança “APISPORTS_HOCKEY_KEY não configurada” quando usada.
+- **Cadeia de fallbacks** (objetivo: nunca deixar a tela olímpica vazia):
+  - **Jogos** (`fetchOlympicGamesWithFallbacks`): tenta API-Sports **2026** → se vazio, API-Sports **2022** → se vazio, **TheSportsDB** (liga 5137) → se vazio, **mock** (`getMockOlympicGames()`). Em erro na rota, responde com mock.
+  - **Times** (`GET /olympics/teams`): tenta API-Sports 2026 e 2022 → se vazio, TheSportsDB → se vazio, **mock** (`getMockOlympicTeams()`). Em erro, responde com mock.
+- **Mock de jogos** (`getMockOlympicGames`): retorna 4 jogos no formato compatível com o frontend (Canada x USA, Finland x Sweden, etc.), com `phase`/round “Group A”.
+- **Mock de times** (`getMockOlympicTeams`): lista fixa de 12 seleções (Canada, USA, Sweden, Finland, Czech Republic, Russia, Germany, Switzerland, Slovakia, Italy, Latvia, Norway) com `id`, `name`, `logo`.
+- **Cache**: resultado de `/olympics/games` em cache por 1 minuto (chave `olympics:games:fallback`).
 
-- Lê `APISPORTS_HOCKEY_KEY` de `config`.
-- Se não existir, lança erro “APISPORTS_HOCKEY_KEY não configurada”.
-- Usada em todas as chamadas à APISports.
+Rotas gerais (exigem APISports quando chamadas):
 
-Rotas gerais:
-
-- `GET /leagues`:
-  - Lista ligas de hockey disponíveis.
-- `GET /games`:
-  - Recebe `league` e `season`, chama `/games` na APISports.
-- `GET /games/statistics?game=ID`:
-  - Estatísticas detalhadas de um jogo.
-- `GET /teams`:
-  - Times por `league` e `season`.
-- `GET /standings`:
-  - Classificação por `league` e `season`.
+- `GET /leagues`, `GET /games`, `GET /games/statistics`, `GET /teams`, `GET /standings`: proxy para APISports.
 
 Rotas específicas de Olimpíadas:
 
-- `GET /olympics/leagues`:
-  - Função `getOlympicLeagueId()`:
-    - Chama `/leagues` na APISports.
-    - Procura por ligas cujo `name` contenha “olympic”/“olympics”.
-    - Se não encontrar, tenta IDs conhecidos (76/77).
-    - Cacheia o ID encontrado em `cachedOlympicLeagueId`.
-  - Retorna `{ olympicLeagueId }`.
+- `GET /olympics/leagues`: retorna `{ olympicLeagueId }` (5137 se uso TheSportsDB; senão via `getOlympicLeagueId()`).
+- `GET /olympics/games`: usa **sempre** a cadeia de fallbacks acima; retorna `{ response: games }` (cache 1 min). Nunca retorna array vazio sem tentar mock.
+- `GET /olympics/teams`: usa a cadeia de fallbacks acima; retorna `{ response: teams }`.
 
-- `GET /olympics/games`:
-  - Usa `getOlympicLeagueId()` para obter a liga.
-  - Chama `/games?league=ID&season=YYYY`.
-  - Retorna JSON para o frontend.
-
-- `GET /olympics/teams`:
-  - Similar, chamando `/teams?league=ID&season=YYYY`.
-
-### `/api/news` – Notícias (NewsAPI / GNews)
+### `/api/news` – Notícias (NewsAPI / GNews, prioridade português)
 
 Local: `server/src/routes/news.routes.ts`
 
+- **Idioma**: notícias em **português** primeiro (`language=pt` na NewsAPI; `lang=pt` e `country=br` na GNews). Se não houver resultados, nova tentativa em **inglês** (`language=en` / `lang=en`).
 - Funções:
-  - `mockArticles()`:
-    - Retorna uma lista mínima orientando configuração de chaves.
-  - `fetchGNews(query)`:
-    - Usa `GNEWS_API_KEY` para chamar `https://gnews.io/api/v4/search`.
-  - `fetchNewsApi(query)`:
-    - Usa `NEWS_API_KEY` para chamar `https://newsapi.org/v2/everything`.
+  - `mockArticles()`: lista mínima orientando configuração de chaves.
+  - `fetchGNews(query, lang)`: GNews com `lang` pt ou en e `country=br` quando pt.
+  - `fetchNewsApi(query, language)`: NewsAPI com `language` pt ou en.
 
 Rota:
 
 - `GET /api/news?q=...`:
-  - Tenta `fetchNewsApi` (NewsAPI).
-  - Se vazio, tenta `fetchGNews`.
-  - Se ainda vazio, usa `mockArticles`.
-  - Responde `{ source, articles }`.
+  - Tenta NewsAPI (pt) → NewsAPI (en) → GNews (pt) → GNews (en) → `mockArticles`.
+  - Artigos passam por `translateArticlesToPt` quando a fonte não é mock (tradução opcional).
+  - Em erro de rede/serviço, tenta GNews (pt/en) e, se ainda falhar, responde com `mockArticles` (não retorna 500).
+  - Responde sempre `{ source, articles }`.
 
 ### `/api/wallpapers` – Wallpapers (TheSportsDB)
 
@@ -706,8 +696,8 @@ Principais variáveis:
 - `JWT_SECRET`, `JWT_EXPIRES_IN`: para autenticação real (ainda não implementada).
 - `NEWS_API_KEY`: chave da NewsAPI.
 - `GNEWS_API_KEY`: chave alternativa da GNews.
-- `THESPORTSDB_API_KEY`: chave da TheSportsDB (pode ser `123` em dev).
-- `APISPORTS_HOCKEY_KEY`: chave da APISports Hockey (obrigatória para dados olímpicos reais).
+- `THESPORTSDB_API_KEY`: chave da TheSportsDB (pode ser `123` em dev). Usada também nas rotas olímpicas quando `APISPORTS_HOCKEY_KEY` não está definida.
+- `APISPORTS_HOCKEY_KEY`: chave da APISports Hockey. **Opcional para Olimpíadas**: se não estiver definida, o servidor usa TheSportsDB (liga 5137 – Olimpíadas de Inverno 2026) para jogos e times olímpicos.
 
 ---
 
@@ -758,7 +748,7 @@ Principais variáveis:
   - Backend ainda não implementa envio de notificações.
 
 - **Melhorias de UX**:
-  - Adicionar filtros por data, liga, fase das Olimpíadas.
+  - **Game Day como Central da competição (Bracket View)**: jogos agrupados por fase (Fase de Grupos, Quartas, Semifinais, Bronze, Final), seções colapsáveis (toque no header para expandir/colapsar), ícones por fase e destaque visual da Final (borda e fundo em destaque). Filtro de data com opção “Todos” por padrão; filtro por categoria (Todos / Masculino / Feminino).
   - Exibir logos dos times usando `/api/sportsdb/nhl-logos` nos cartões de jogo/time.
 
 Este documento resume a arquitetura, componentes e fluxos principais do IceHub, tanto no frontend quanto no backend, servindo como guia de manutenção e evolução do projeto.

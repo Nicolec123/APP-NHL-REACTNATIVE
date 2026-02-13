@@ -17,6 +17,7 @@ import { normalizeOlympicGames, OlympicGameNormalized } from '../domain/olympics
 export const HomeScreen: React.FC = () => {
   const colors = useThemeColors();
   const mode = useAppStore(state => state.mode);
+  const incrementGamesWatched = useAppStore(state => state.incrementGamesWatched);
   const { games, isLoading, refetch } = useTodayGames();
   const [olympicGames, setOlympicGames] = useState<OlympicGameNormalized[]>([]);
   const [olympicLoading, setOlympicLoading] = useState(false);
@@ -26,7 +27,7 @@ export const HomeScreen: React.FC = () => {
     if (mode !== 'olympics') return;
     setOlympicLoading(true);
     try {
-      const list = await fetchOlympicGames('2022');
+      const list = await fetchOlympicGames();
       setOlympicGames(normalizeOlympicGames(list));
     } catch {
       setOlympicGames([]);
@@ -43,17 +44,9 @@ export const HomeScreen: React.FC = () => {
   const loading = isOlympics ? olympicLoading : isLoading;
   const onRefresh = isOlympics ? loadOlympic : refetch;
 
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-
+  // ETAPA 3 – Olimpíada: mostrar todos os jogos, ordenar pela data mais próxima (nunca esconder por filtro de data)
   const olympicVisible = isOlympics
-    ? olympicGames
-        .filter(game => {
-          if (!game.timestamp) return true;
-          // Home mostra jogos de hoje em diante
-          return game.timestamp >= startOfToday;
-        })
-        .sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0))
+    ? [...olympicGames].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0))
     : [];
 
   const phaseOrder: Record<string, number> = {
@@ -87,7 +80,7 @@ export const HomeScreen: React.FC = () => {
     <IceBackground>
       <ScreenHeader
         title={isOlympics ? 'Hockey Olímpico' : 'IceHub'}
-        subtitle={isOlympics ? 'Jogos e novidades das Olimpíadas' : 'Jogos de hoje e novidades da NHL'}
+        subtitle={isOlympics ? undefined : 'Jogos de hoje e novidades da NHL'}
         icon={isOlympics ? 'medal' : 'snow-outline'}
         hero={isOlympics ? <OlympicHero /> : <NhlHero />}
       />
@@ -118,11 +111,11 @@ export const HomeScreen: React.FC = () => {
             ))}
           </View>
         ) : isOlympics ? (
-          olympicVisible.length === 0 ? (
+            olympicVisible.length === 0 ? (
             <View style={styles.empty}>
-              <Text style={[styles.emptyText, { color: colors.text }]}>Nenhum jogo olímpico disponível.</Text>
+              <Text style={[styles.emptyText, { color: colors.text }]}>Jogos indisponíveis no momento</Text>
               <Text style={[styles.emptySub, { color: colors.textSecondary }]}>
-                Configure APISPORTS_HOCKEY_KEY no servidor ou puxe para atualizar.
+                Puxe para atualizar ou tente novamente em instantes.
               </Text>
             </View>
           ) : (
@@ -145,7 +138,10 @@ export const HomeScreen: React.FC = () => {
                       startTime={`${game.dateLabel} ${game.timeLabel}`.trim()}
                       status={cardStatus}
                       league="Olimpíadas"
-                      onPress={() => setSelectedGame(game)}
+                      onPress={() => {
+                        incrementGamesWatched();
+                        setSelectedGame(game);
+                      }}
                     />
                   );
                 })}
@@ -173,6 +169,7 @@ export const HomeScreen: React.FC = () => {
                     ? 'LIVE'
                     : 'UPCOMING'
               }
+              onPress={() => incrementGamesWatched()}
             />
           ))
         )}
@@ -186,6 +183,17 @@ export const HomeScreen: React.FC = () => {
           awayName={selectedGame.away.name}
           homeLogo={selectedGame.home.logo}
           awayLogo={selectedGame.away.logo}
+          dateLabel={selectedGame.dateLabel}
+          timeLabel={selectedGame.timeLabel}
+          phaseLabel={selectedGame.phase}
+          statusLabel={
+            selectedGame.status === 'live'
+              ? 'Ao vivo'
+              : selectedGame.status === 'finished'
+              ? 'Finalizado'
+              : 'Agendado'
+          }
+          genderLabel={selectedGame.gender === 'female' ? 'Feminino' : 'Masculino'}
         />
       )}
     </IceBackground>

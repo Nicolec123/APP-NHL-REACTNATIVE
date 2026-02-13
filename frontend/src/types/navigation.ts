@@ -6,4 +6,5 @@ export type RootTabParamList = {
   Wallpapers: undefined;
   Profile: undefined;
   GameDay: undefined;
+  Concluidos: undefined;
 };

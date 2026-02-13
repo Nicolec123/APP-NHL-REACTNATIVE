@@ -8,35 +8,43 @@ type Props = {
   children: ReactNode;
 };
 
-const RINK_LINE_NHL = 'rgba(56, 189, 248, 0.12)';
-const RINK_LINE_OLYMPICS = 'rgba(0, 129, 200, 0.14)';
+const RINK_LINE_NHL_DARK = 'rgba(239, 68, 68, 0.16)';
+const RINK_LINE_OLYMPICS_DARK = 'rgba(239, 68, 68, 0.16)';
+const RINK_LINE_NHL_LIGHT = 'rgba(220, 38, 38, 0.2)';
+const RINK_LINE_OLYMPICS_LIGHT = 'rgba(220, 38, 38, 0.2)';
 
 export const IceBackground: React.FC<Props> = ({ children }) => {
   const colors = useThemeColors();
   const mode = useAppStore(state => state.mode);
-  const rinkLine = mode === 'olympics' ? RINK_LINE_OLYMPICS : RINK_LINE_NHL;
+  const darkMode = useAppStore(state => state.darkMode);
+  const animatedBackground = useAppStore(state => state.animatedBackground);
+  const rinkLine =
+    mode === 'olympics'
+      ? darkMode
+        ? RINK_LINE_OLYMPICS_DARK
+        : RINK_LINE_OLYMPICS_LIGHT
+      : darkMode
+        ? RINK_LINE_NHL_DARK
+        : RINK_LINE_NHL_LIGHT;
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <LinearGradient
-        colors={[colors.background, mode === 'olympics' ? '#051218' : '#05101d', colors.surfaceAlt]}
+        colors={[colors.background, colors.surface, colors.surfaceAlt]}
         style={StyleSheet.absoluteFill}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
 
-      {/* Linha central (meio da quadra) */}
-      <View style={[styles.centerLine, { backgroundColor: rinkLine }]} />
-
-      {/* Círculo central (faceoff centro) */}
-      <View style={[styles.centerCircle, { borderColor: rinkLine }]} />
-
-      {/* Círculos de faceoff – zona ofensiva (topo) */}
-      <View style={[styles.faceoffCircle, styles.faceoffTopLeft, { borderColor: rinkLine }]} />
-      <View style={[styles.faceoffCircle, styles.faceoffTopRight, { borderColor: rinkLine }]} />
-
-      {/* Círculos de faceoff – zona defensiva (baixo) */}
-      <View style={[styles.faceoffCircle, styles.faceoffBottomLeft, { borderColor: rinkLine }]} />
-      <View style={[styles.faceoffCircle, styles.faceoffBottomRight, { borderColor: rinkLine }]} />
+      {animatedBackground && (
+        <>
+          <View style={[styles.centerLine, { backgroundColor: rinkLine }]} />
+          <View style={[styles.centerCircle, { borderColor: rinkLine }]} />
+          <View style={[styles.faceoffCircle, styles.faceoffTopLeft, { borderColor: rinkLine }]} />
+          <View style={[styles.faceoffCircle, styles.faceoffTopRight, { borderColor: rinkLine }]} />
+          <View style={[styles.faceoffCircle, styles.faceoffBottomLeft, { borderColor: rinkLine }]} />
+          <View style={[styles.faceoffCircle, styles.faceoffBottomRight, { borderColor: rinkLine }]} />
+        </>
+      )}
 
       {children}
     </View>
@@ -52,14 +60,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    top: '50%',
+    top: '55%',
     marginTop: -0.5,
     height: 1,
   },
   centerCircle: {
     position: 'absolute',
     left: '50%',
-    top: '50%',
+    top: '55%',
     width: 160,
     height: 160,
     marginLeft: -80,
@@ -78,25 +86,25 @@ const styles = StyleSheet.create({
   },
   faceoffTopLeft: {
     left: '18%',
-    top: '22%',
+    top: '27%',
     marginLeft: -44,
     marginTop: -44,
   },
   faceoffTopRight: {
     left: '82%',
-    top: '22%',
+    top: '27%',
     marginLeft: -44,
     marginTop: -44,
   },
   faceoffBottomLeft: {
     left: '18%',
-    bottom: '22%',
+    bottom: '18%',
     marginLeft: -44,
     marginBottom: -44,
   },
   faceoffBottomRight: {
     left: '82%',
-    bottom: '22%',
+    bottom: '18%',
     marginLeft: -44,
     marginBottom: -44,
   },

@@ -12,7 +12,10 @@ export function useHydrateApp() {
     token: state.token,
     favoriteTeams: state.favoriteTeams,
     favoriteOlympicTeams: state.favoriteOlympicTeams,
-    mode: state.mode
+    mode: state.mode,
+    notifyGames: state.notifyGames,
+    notifyNews: state.notifyNews,
+    darkMode: state.darkMode,
   }));
 
   useEffect(() => {

@@ -18,7 +18,7 @@ type Props = {
 
 const statusLabel: Record<Props['status'], string> = {
   LIVE: 'Ao vivo',
-  FINAL: 'Final',
+  FINAL: 'Concluído',
   UPCOMING: 'Próximo jogo',
 };
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -89,8 +89,24 @@ export const ScreenHeader: React.FC<Props> = ({ title, subtitle, icon, hero }) =
 
       {/* 2ª linha: título da tela */}
       <View style={styles.titleRow}>
-        <View style={[styles.iconWrapper, { backgroundColor: colors.primarySoft }]}>
-          <Ionicons name={iconName} size={20} color={colors.primary} />
+        <View
+          style={[
+            styles.iconWrapper,
+            {
+              backgroundColor: colors.primarySoft,
+              borderColor: colors.primary,
+              ...(Platform.OS === 'ios'
+                ? {
+                    shadowColor: colors.primary,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 6,
+                  }
+                : { elevation: 4 }),
+            },
+          ]}
+        >
+          <Ionicons name={iconName} size={28} color={colors.primary} />
         </View>
         <View style={styles.textBlock}>
           <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
@@ -135,21 +151,29 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: spacing.lg,
+    paddingRight: spacing.sm,
   },
   iconWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
+    width: 60,
+    height: 60,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: spacing.md,
+    marginRight: spacing.xl,
+    borderWidth: 1.5,
   },
-  textBlock: { flex: 1, minWidth: 0 },
+  textBlock: { flex: 1, minWidth: 0, paddingRight: spacing.xs },
   title: {
-    ...typography.title,
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
   subtitle: {
-    ...typography.caption,
-    marginTop: 2,
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 4,
+    letterSpacing: 0.2,
+    opacity: 0.95,
   },
 });

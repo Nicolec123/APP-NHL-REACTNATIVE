@@ -6,13 +6,16 @@ import {
   StyleSheet,
   Image,
   Dimensions,
-  RefreshControl
+  RefreshControl,
+  TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { IceBackground } from '@components/IceBackground';
 import { ScreenHeader } from '@components/ScreenHeader';
 import { Skeleton } from '@components/Skeleton';
 import { spacing, typography, radius } from '../theme';
 import { useThemeColors } from '@hooks/useThemeColors';
+import { useAppStore } from '@store/useAppStore';
 import { fetchWallpapers, Wallpaper } from '@services/wallpapersApi';
 
 const COLS = 2;
@@ -22,6 +25,8 @@ const tileSize = (width - spacing.lg * 2 - GAP * (COLS - 1)) / COLS;
 
 export const WallpapersScreen: React.FC = () => {
   const colors = useThemeColors();
+  const mode = useAppStore(state => state.mode);
+  const incrementWallpapersDownloaded = useAppStore(state => state.incrementWallpapersDownloaded);
   const [wallpapers, setWallpapers] = useState<Wallpaper[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -51,7 +56,7 @@ export const WallpapersScreen: React.FC = () => {
     <IceBackground>
       <ScreenHeader
         title="Wallpapers"
-        subtitle="Papéis de parede da NHL"
+        subtitle={mode === 'olympics' ? 'Papéis de parede – Hockey nas Olimpíadas' : 'Papéis de parede da NHL'}
         icon="images-outline"
       />
       <ScrollView
@@ -75,7 +80,15 @@ export const WallpapersScreen: React.FC = () => {
         ) : (
           <View style={styles.grid}>
             {wallpapers.map((w) => (
-              <View key={w.id} style={styles.tileWrap}>
+              <TouchableOpacity
+                key={w.id}
+                style={styles.tileWrap}
+                activeOpacity={0.9}
+                onPress={() => {
+                  incrementWallpapersDownloaded();
+                  Alert.alert('Wallpaper', 'Contagem de download atualizada! Veja em Perfil > Minha temporada.');
+                }}
+              >
                 <Image
                   source={{ uri: w.imageUrl }}
                   style={[styles.tile, { backgroundColor: colors.border }]}
@@ -84,7 +97,8 @@ export const WallpapersScreen: React.FC = () => {
                 <Text style={[styles.tileTitle, { color: colors.textSecondary }]} numberOfLines={1}>
                   {w.title}
                 </Text>
-              </View>
+                <Text style={[styles.tileHint, { color: colors.primary }]}>Toque para marcar como baixado</Text>
+              </TouchableOpacity>
             ))}
           </View>
         )}
@@ -113,6 +127,12 @@ const styles = StyleSheet.create({
   tileTitle: {
     ...typography.caption,
     marginTop: 4,
+    paddingHorizontal: 2,
+  },
+  tileHint: {
+    ...typography.caption,
+    fontSize: 10,
+    marginTop: 2,
     paddingHorizontal: 2,
   },
   empty: {

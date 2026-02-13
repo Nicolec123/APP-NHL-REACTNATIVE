@@ -5,7 +5,7 @@ const baseColors = {
   danger: '#EF4444',
 };
 
-/** Tema NHL (padrão) */
+/** Tema NHL escuro (padrão) */
 export const colors = {
   ...baseColors,
   background: '#030712',
@@ -22,6 +22,25 @@ export const colors = {
   ice: 'rgba(224, 242, 254, 0.06)',
 };
 
+/** Tema NHL claro – letras em tons mais claros para combinar com o gradiente */
+export const colorsLight = {
+  ...baseColors,
+  text: '#475569',
+  textSecondary: '#64748B',
+  background: '#F1F5F9',
+  surface: '#E2E8F0',
+  surfaceCard: '#F8FAFC',
+  surfaceAlt: '#CBD5E1',
+  primary: '#0EA5E9',
+  primaryDark: '#0284C7',
+  primarySoft: 'rgba(56, 189, 248, 0.22)',
+  accent: '#EA580C',
+  accentSoft: 'rgba(249, 115, 22, 0.22)',
+  border: '#94A3B8',
+  borderLight: '#CBD5E1',
+  ice: 'rgba(14, 165, 233, 0.08)',
+};
+
 /** Cores dos anéis olímpicos (azul, amarelo, preto, verde, vermelho) – usadas com moderação */
 export const olympicsRingColors = {
   blue: '#0081C8',
@@ -31,7 +50,7 @@ export const olympicsRingColors = {
   red: '#EE334E',
 };
 
-/** Tema área Olimpíada: mantém identidade do app com toques olímpicos */
+/** Tema área Olimpíada escuro */
 export const colorsOlympics = {
   ...baseColors,
   background: '#030712',
@@ -46,6 +65,25 @@ export const colorsOlympics = {
   border: '#1E293B',
   borderLight: '#334155',
   ice: 'rgba(224, 242, 254, 0.06)',
+};
+
+/** Tema área Olimpíada claro – letras em tons mais claros para combinar com o gradiente */
+export const colorsOlympicsLight = {
+  ...baseColors,
+  text: '#475569',
+  textSecondary: '#64748B',
+  background: '#F0F9FF',
+  surface: '#E0F2FE',
+  surfaceCard: '#F8FAFC',
+  surfaceAlt: '#BAE6FD',
+  primary: olympicsRingColors.blue,
+  primaryDark: '#006BA6',
+  primarySoft: 'rgba(0, 129, 200, 0.22)',
+  accent: olympicsRingColors.yellow,
+  accentSoft: 'rgba(252, 177, 49, 0.28)',
+  border: '#7DD3FC',
+  borderLight: '#BAE6FD',
+  ice: 'rgba(0, 129, 200, 0.08)',
 };
 
 export const spacing = {
@@ -96,3 +134,9 @@ export const typography = {
 };
 
 export type ThemeColors = typeof colors;
+
+/** Retorna o tema (NHL ou Olimpíadas) em versão escura ou clara */
+export function getThemeColors(mode: 'nhl' | 'olympics', darkMode: boolean): ThemeColors {
+  if (mode === 'olympics') return darkMode ? colorsOlympics : colorsOlympicsLight;
+  return darkMode ? colors : colorsLight;
+}

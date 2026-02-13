@@ -46,7 +46,7 @@ export const TeamsScreen: React.FC = () => {
 
   const loadOlympic = useCallback(async () => {
     try {
-      const list = await fetchOlympicTeams('2022');
+      const list = await fetchOlympicTeams('2026');
       setOlympicTeams(Array.isArray(list) ? list : []);
     } catch {
       setOlympicTeams([]);
@@ -79,7 +79,7 @@ export const TeamsScreen: React.FC = () => {
     <IceBackground>
       <ScreenHeader
         title={isOlympics ? 'Seleções Olímpicas' : 'Times da NHL'}
-        subtitle={isOlympics ? 'Hockey nas Olimpíadas – selecione favoritos' : 'Selecione seus favoritos para personalizar o app'}
+        subtitle={undefined}
         icon={isOlympics ? 'medal' : 'shield-checkmark-outline'}
       />
 

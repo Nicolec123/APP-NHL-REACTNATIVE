@@ -1,0 +1,142 @@
+[
+  {
+    "id": 1001,
+    "phase": "Group A",
+    "home": "Canada",
+    "away": "Germany",
+    "date": "2026-02-11",
+    "time": "18:00",
+    "status": "FINAL",
+    "score": { "home": 5, "away": 2 },
+    "homeLogo": "https://flagcdn.com/w80/ca.png",
+    "awayLogo": "https://flagcdn.com/w80/de.png"
+  },
+  {
+    "id": 1002,
+    "phase": "Group A",
+    "home": "USA",
+    "away": "Switzerland",
+    "date": "2026-02-11",
+    "time": "21:00",
+    "status": "FINAL",
+    "score": { "home": 4, "away": 3 },
+    "homeLogo": "https://flagcdn.com/w80/us.png",
+    "awayLogo": "https://flagcdn.com/w80/ch.png"
+  },
+  {
+    "id": 1003,
+    "phase": "Group B",
+    "home": "Sweden",
+    "away": "Slovakia",
+    "date": "2026-02-12",
+    "time": "18:00",
+    "status": "FINAL",
+    "score": { "home": 3, "away": 1 },
+    "homeLogo": "https://flagcdn.com/w80/se.png",
+    "awayLogo": "https://flagcdn.com/w80/sk.png"
+  },
+  {
+    "id": 1004,
+    "phase": "Group B",
+    "home": "Finland",
+    "away": "Czech Republic",
+    "date": "2026-02-12",
+    "time": "21:00",
+    "status": "FINAL",
+    "score": { "home": 2, "away": 2 },
+    "homeLogo": "https://flagcdn.com/w80/fi.png",
+    "awayLogo": "https://flagcdn.com/w80/cz.png"
+  },
+  {
+    "id": 1010,
+    "phase": "Quarterfinal",
+    "home": "Canada",
+    "away": "Switzerland",
+    "date": "2026-02-16",
+    "time": "18:00",
+    "status": "FINAL",
+    "score": { "home": 6, "away": 1 },
+    "homeLogo": "https://flagcdn.com/w80/ca.png",
+    "awayLogo": "https://flagcdn.com/w80/ch.png"
+  },
+  {
+    "id": 1011,
+    "phase": "Quarterfinal",
+    "home": "USA",
+    "away": "Germany",
+    "date": "2026-02-16",
+    "time": "21:00",
+    "status": "FINAL",
+    "score": { "home": 3, "away": 2 },
+    "homeLogo": "https://flagcdn.com/w80/us.png",
+    "awayLogo": "https://flagcdn.com/w80/de.png"
+  },
+  {
+    "id": 1012,
+    "phase": "Quarterfinal",
+    "home": "Sweden",
+    "away": "Czech Republic",
+    "date": "2026-02-17",
+    "time": "18:00",
+    "status": "FINAL",
+    "score": { "home": 4, "away": 2 },
+    "homeLogo": "https://flagcdn.com/w80/se.png",
+    "awayLogo": "https://flagcdn.com/w80/cz.png"
+  },
+  {
+    "id": 1013,
+    "phase": "Quarterfinal",
+    "home": "Finland",
+    "away": "Slovakia",
+    "date": "2026-02-17",
+    "time": "21:00",
+    "status": "FINAL",
+    "score": { "home": 5, "away": 1 },
+    "homeLogo": "https://flagcdn.com/w80/fi.png",
+    "awayLogo": "https://flagcdn.com/w80/sk.png"
+  },
+  {
+    "id": 1020,
+    "phase": "Semifinal",
+    "home": "Canada",
+    "away": "USA",
+    "date": "2026-02-20",
+    "time": "20:00",
+    "status": "UPCOMING",
+    "score": null,
+    "homeLogo": "https://flagcdn.com/w80/ca.png",
+    "awayLogo": "https://flagcdn.com/w80/us.png"
+  },
+  {
+    "id": 1021,
+    "phase": "Semifinal",
+    "home": "Sweden",
+    "away": "Finland",
+    "date": "2026-02-20",
+    "time": "23:00",
+    "status": "UPCOMING",
+    "score": null,
+    "homeLogo": "https://flagcdn.com/w80/se.png",
+    "awayLogo": "https://flagcdn.com/w80/fi.png"
+  },
+  {
+    "id": 1030,
+    "phase": "Bronze",
+    "home": "TBD",
+    "away": "TBD",
+    "date": "2026-02-22",
+    "time": "18:00",
+    "status": "UPCOMING",
+    "score": null
+  },
+  {
+    "id": 1031,
+    "phase": "Final",
+    "home": "TBD",
+    "away": "TBD",
+    "date": "2026-02-22",
+    "time": "22:00",
+    "status": "UPCOMING",
+    "score": null
+  }
+]

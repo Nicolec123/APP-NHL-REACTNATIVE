@@ -37,7 +37,7 @@ export const FavoritesScreen: React.FC = () => {
         return;
       }
       try {
-        const all = await fetchOlympicTeams('2022');
+        const all = await fetchOlympicTeams('2026');
         setOlympicTeams(all.filter(t => favoriteOlympicTeams.includes(t.id)));
       } catch {
         setOlympicTeams([]);

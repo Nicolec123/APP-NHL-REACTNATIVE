@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import axios from 'axios';
 import { config } from '../config';
-import { translateToPt } from '../utils/translate';
+import { translateToPt } from '../services/translate.service';
 
 /**
- * Notícias NHL:
- * - NewsAPI (opcional, paga em produção) – NEWS_API_KEY
- * - GNews (alternativa gratuita, 100 req/dia) – GNEWS_API_KEY
- * Sem chave: fallback mock ou tenta GNews se tiver chave.
+ * Notícias NHL/Olimpíadas:
+ * - NewsAPI (NEWS_API_KEY) e GNews (GNEWS_API_KEY), com prioridade português e fallback inglês.
+ * - Tradução automática no backend: notícias em inglês são traduzidas para PT (LibreTranslate, sem chave).
+ * - Frontend só exibe; tradução é feita no backend.
  */
 export const newsRoutes = Router();
 
@@ -20,17 +20,17 @@ type Article = {
   source?: string;
 };
 
+/** Traduz título e descrição de cada artigo para português (inglês → PT). Mock já está em PT. */
 async function translateArticlesToPt(source: string, articles: Article[]): Promise<Article[]> {
-  // Mock já está em português
   if (source === 'mock') return articles;
 
-  return Promise.all(
-    articles.map(async (article) => ({
-      ...article,
-      title: article.title ? await translateToPt(article.title) : article.title,
-      description: article.description ? await translateToPt(article.description) : article.description,
-    }))
-  );
+  const translated: Article[] = [];
+  for (const article of articles) {
+    const title = article.title ? await translateToPt(article.title) : article.title;
+    const description = article.description ? await translateToPt(article.description) : article.description;
+    translated.push({ ...article, title, description });
+  }
+  return translated;
 }
 
 function mockArticles(): Article[] {
@@ -44,13 +44,15 @@ function mockArticles(): Article[] {
   ];
 }
 
-async function fetchGNews(query: string): Promise<Article[]> {
+/** ETAPA 4 – Busca GNews; lang=pt e country=br primeiro, fallback para inglês se vazio. */
+async function fetchGNews(query: string, lang: 'pt' | 'en' = 'pt'): Promise<Article[]> {
   if (!config.gnewsApiKey) return [];
   const { data } = await axios.get('https://gnews.io/api/v4/search', {
     params: {
       token: config.gnewsApiKey,
       q: query,
-      lang: 'en',
+      lang: lang === 'pt' ? 'pt' : 'en',
+      country: lang === 'pt' ? 'br' : undefined,
       max: 10,
       sortby: 'publishedAt'
     },
@@ -67,13 +69,14 @@ async function fetchGNews(query: string): Promise<Article[]> {
   }));
 }
 
-async function fetchNewsApi(query: string): Promise<Article[]> {
+/** ETAPA 4 – Busca NewsAPI; language=pt primeiro, fallback para en se vazio. */
+async function fetchNewsApi(query: string, language: 'pt' | 'en' = 'pt'): Promise<Article[]> {
   if (!config.newsApiKey) return [];
   const { data } = await axios.get('https://newsapi.org/v2/everything', {
     params: {
       apiKey: config.newsApiKey,
       q: query,
-      language: 'en',
+      language,
       sortBy: 'publishedAt',
       pageSize: 10
     },
@@ -94,11 +97,17 @@ newsRoutes.get('/', async (req, res) => {
   try {
     const query = (req.query.q as string) || 'NHL hockey';
 
-    let articles: Article[] = await fetchNewsApi(query);
+    let articles: Article[] = await fetchNewsApi(query, 'pt');
     let source = 'newsapi';
     if (articles.length === 0) {
-      articles = await fetchGNews(query);
+      articles = await fetchNewsApi(query, 'en');
+    }
+    if (articles.length === 0) {
+      articles = await fetchGNews(query, 'pt');
       source = 'gnews';
+    }
+    if (articles.length === 0) {
+      articles = await fetchGNews(query, 'en');
     }
     if (articles.length === 0) {
       articles = mockArticles();
@@ -110,7 +119,8 @@ newsRoutes.get('/', async (req, res) => {
   } catch (error: any) {
     console.error('[IceHub API] Erro ao buscar notícias', error?.message);
     try {
-      const articles = await fetchGNews((req.query.q as string) || 'NHL hockey');
+      let articles = await fetchGNews((req.query.q as string) || 'NHL hockey', 'pt');
+      if (articles.length === 0) articles = await fetchGNews((req.query.q as string) || 'NHL hockey', 'en');
       if (articles.length > 0) {
         const translated = await translateArticlesToPt('gnews', articles);
         return res.json({ source: 'gnews', articles: translated });
@@ -118,7 +128,7 @@ newsRoutes.get('/', async (req, res) => {
     } catch {
       // ignora
     }
-    return res.status(500).json({ message: 'Não foi possível buscar notícias agora.' });
+    return res.json({ source: 'mock', articles: mockArticles() });
   }
 });
 
